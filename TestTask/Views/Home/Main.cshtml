@@ -1,0 +1,193 @@
+﻿@{
+    ViewBag.Title = "Main";
+}
+
+<h2>Товары</h2>
+
+<div name="filterBlock">
+    <div class="form-inline">
+        <div>
+            <label>Наименование товара:</label>
+            <input type="text" class="form-control" id="nameProduct" value="">
+        </div>
+        <div>
+            <label>Производитель:</label>
+            <input type="text" class="form-control" id="nameMarker" value="">
+        </div>
+        <div>
+            <label>Цена:</label>
+            <input type="number" step="1000.00" placeholder="0,00" class="form-control" id="priceProductFrom">
+            <input type="number" step="1000.00" placeholder="0,00" class="form-control" id="priceProductTo">
+        </div>
+    </div>
+</div>
+
+<hr>
+
+<div name="sorted">
+    <input class="selectedSort" type="hidden" value=""/>
+    <label>Сортировать:</label>
+    <a href="#" class="name ASC">по наименованию</a>
+    <span></span>
+
+    <a href="#" class="marker ASC">по произоводителю</a>
+    <span></span>
+
+    <a href="#" class="category ASC">по категории</a>
+    <span></span>
+
+    <a href="#" class="price ASC">по цене</a>
+    <span></span>
+</div>
+
+<div name="main">
+    <p>
+        Нет подходящих товаров
+    </p>
+    <div name="loader">
+        <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
+    </div>
+    <div name="tableBlock"></div>
+</div>
+
+<div name="navigationMenu" class="btn-group"></div>
+
+@section scripts
+{
+    <script type="text/javascript">
+        $(document).ready(function () {
+            GetProducts();
+
+            $("div[name='sorted'] a").on("click", function (e) {
+                var current = e.currentTarget;
+                $("div[name='sorted'] input.selectedSort").val(current.className);
+
+                GetProducts(Url(1));
+
+                if (current.className.indexOf("ASC") != -1) {
+                    current.className = current.className.replace("ASC", "DESC");
+                    current.nextElementSibling.className = "glyphicon glyphicon-sort-by-attributes";
+                } else {
+                    current.className = current.className.replace("DESC", "ASC");
+                    current.nextElementSibling.className = "glyphicon glyphicon-sort-by-attributes-alt";
+                }
+            });
+
+            $("#nameProduct").on("change", function (e) {
+                GetProducts(Url(1));
+            });
+
+            $("#nameMarker").on("change", function (e) {
+                GetProducts(Url(1));
+            });
+
+            $("#priceProductFrom").on("change", function (e) {
+                GetProducts(Url(1));
+            });
+
+            $("#priceProductTo").on("change", function (e) {
+                GetProducts(Url(1));
+            });
+        });
+
+        function GetProducts(url) {
+            var urlAdress = url ? url : '/api/products/getproducts/1';
+            $(window).scrollTop(0);
+            $.ajax({
+                url: urlAdress,
+                type: 'GET',
+                beforeSend: function () {
+                    $("div[name='loader']")[0].style.display = "block";
+                },
+                success: function (data, status, response) {
+                    $("div[name='tableBlock']").html("");
+                    $("div[name='navigationMenu']").html("");
+                    if (data.length != 0) {
+                        WriteResponse(data);
+                        BuildNavigationMenu(response.getResponseHeader('X-Pagination'));
+                        $("div[name='main'] p")[0].style.display = "none";
+                    } else {
+                        $("div[name='main'] p")[0].style.display = "block";
+                    }
+
+                    $("div[name='loader']")[0].style.display = "none";
+                },
+                error: function (jqXHR) {
+                    console.log(jqXHR.responseText);
+                    $("div[name='loader']")[0].style.display = "none";
+                    alert("Возникла ошибка! Обратитесь к администратору.");
+                }
+            });
+        }
+
+        function WriteResponse(products) {
+            var strResult = "<table class=\"table\">" +
+                "<th>Наименование товара</th>" +
+                "<th>Производитель</th>" +
+                "<th>Категория</th>" +
+                "<th>Цена</th>";
+            $.each(products, function (index, product) {
+                strResult += "<tr><td>" + product.Name + "</td><td> "
+                    + product.Marker.Name + "</td><td>"
+                    + product.Category + "</td><td>"
+                    + product.Price + "</td></tr>";
+            });
+            strResult += "</table>";
+            $("div[name='tableBlock']").html(strResult);
+        }
+
+        function BuildNavigationMenu(responseHeaders) {
+            var headers = JSON.parse(responseHeaders);
+            var strResult = "";
+
+            if (headers.CurrentPage < 7) {
+                for (var i = 1; i <= 10; i++) {
+                    strResult += i == headers.CurrentPage ? "<button class=\"btn btn-primary selected\">" + i + "</button>" :
+                        "<button class=\"btn btn-default\">" + i + "</button>"
+                }
+            } else {
+                strResult += "<button class=\"btn btn-default\" id=\"backward\">Назад</button>"
+                    + "<button class=\"btn btn-default\">1</button>"
+                    + "<button class=\"btn btn-default\" disabled>...</button>";
+                var endIf = headers.CurrentPage == headers.TotalPages ? headers.CurrentPage : headers.CurrentPage + 4;
+                for (var i = headers.CurrentPage - 4; i <= endIf; i++) {
+                    strResult += i == headers.CurrentPage ? "<button class=\"btn btn-primary selected\">" + i + "</button>" :
+                        "<button class=\"btn btn-default\">" + i + "</button>"
+                }
+            }
+            if (headers.CurrentPage != headers.TotalPages) {
+                strResult += "<button class=\"btn btn-default\" disabled>...</button>"
+                    + "<button class=\"btn btn-default\">" + headers.TotalPages + "</button>"
+                    + "<button class=\"btn btn-default\" id=\"forward\">Вперёд</button>";
+            }
+
+            $("div[name='navigationMenu']").html(strResult);
+
+            $("#forward").on("click", function (e) {
+
+                var currentPage = parseInt($("button.btn.btn-primary.selected")[0].textContent);
+                GetProducts(Url(currentPage+1));
+            });
+            $("#backward").on("click", function (e) {
+                var currentPage = parseInt($("button.btn.btn-primary.selected")[0].textContent);
+                GetProducts(Url(currentPage - 1));
+            });
+            $("div[name='navigationMenu'] button").on("click", function (e) {
+                GetProducts(Url(e.currentTarget.textContent));
+            });
+        }
+
+        function Url(page) {
+            var sort = $("div[name='sorted'] input.selectedSort").val();
+            var url = '/api/products/getproducts/';
+
+            url += page + "/"
+            url += sort != "" ? sort + "/" : "\"\"/";
+            url += $("#nameProduct").val() != "" ? $("#nameProduct").val() + "/" : "\"\"/";
+            url += $("#nameMarker").val() != "" ? $("#nameMarker").val() + "/" : "\"\"/";
+            url += $("#priceProductFrom").val() != "" ? $("#priceProductFrom").val() + "/" : "0/";
+            url += $("#priceProductTo").val() != "" ? $("#priceProductTo").val() : "0";
+            return url;
+        }
+    </script>
+}

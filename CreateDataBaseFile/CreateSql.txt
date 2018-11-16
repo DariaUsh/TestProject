@@ -1,0 +1,26 @@
+CREATE DATABASE TestBase;
+GO
+	
+USE TestBase;
+
+CREATE TABLE Markers (
+    id INT PRIMARY KEY IDENTITY NOT NULL,
+    name NVARCHAR (50) UNIQUE NOT NULL,
+    country NVARCHAR (70) NULL,
+);
+
+CREATE TABLE Products
+(
+	id INT NOT NULL PRIMARY KEY IDENTITY, 
+    name NVARCHAR(100) NOT NULL, 
+    markerId INT NOT NULL, 
+    category NVARCHAR(50) NOT NULL, 
+    price FLOAT NOT NULL, 
+    CONSTRAINT FK_Products_Markers FOREIGN KEY (markerId) REFERENCES Markers (id)
+);
+
+BULK INSERT Markers FROM 'C:\markers.txt'
+WITH (FIELDTERMINATOR = ',', CODEPAGE='ACP');
+
+BULK INSERT Products FROM 'C:\products.txt'
+WITH (FIELDTERMINATOR = ',', CODEPAGE='ACP');
